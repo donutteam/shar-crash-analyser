@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -104,15 +105,39 @@ internal static class Program
         try
         {
             var dump = Analyser.AnalyseDump(dumpPath);
-            Console.WriteLine(dump);
+            PrintColouredConsole(dump);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"There was an error analysing dump: {ex}");
         }
+    }
 
+    private static void PrintColouredConsole(string text)
+    {
+        string pattern = @"(?<header>=== .* ===)|(?<reg>\b(eax|ebx|ecx|edx|esi|edi|ebp|esp|eip|efl)\b)|(?<hex>\b[0-9a-fA-F]{8}\b)";
+
+        var matches = Regex.Matches(text, pattern, RegexOptions.IgnoreCase);
+        int lastIndex = 0;
+
+        foreach (Match m in matches)
         {
+            Console.ResetColor();
+            Console.Write(text.Substring(lastIndex, m.Index - lastIndex));
+
+            if (m.Groups["header"].Success)
+                Console.ForegroundColor = ConsoleColor.Cyan;
+            else if (m.Groups["reg"].Success)
+                Console.ForegroundColor = ConsoleColor.Magenta;
+            else if (m.Groups["hex"].Success)
+                Console.ForegroundColor = ConsoleColor.Green;
+
+            Console.Write(m.Value);
+            lastIndex = m.Index + m.Length;
         }
+
+        Console.ResetColor();
+        Console.WriteLine(text.Substring(lastIndex));
     }
 
     private static async Task UpdateSymbols()
