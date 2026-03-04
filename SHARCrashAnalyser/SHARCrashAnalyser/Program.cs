@@ -11,15 +11,15 @@ namespace SHARCrashAnalyser;
 internal static class Program
 {
     [DllImport("kernel32.dll")]
-    static extern IntPtr GetConsoleWindow();
+    private static extern IntPtr GetConsoleWindow();
 
     [DllImport("user32.dll")]
-    static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("kernel32.dll")]
-    static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
+    private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
 
-    const int SW_HIDE = 0;
+    private const int SW_HIDE = 0;
 
     internal static CommandLineSettings CommandLineSettings;
 
@@ -115,7 +115,7 @@ internal static class Program
         }
     }
 
-    static async Task UpdateSymbols()
+    private static async Task UpdateSymbols()
     {
         if (File.Exists(CommandLineSettings.CSVPath) && !AskYesNo($"Symbols file \"{CommandLineSettings.CSVPath}\" already exists. Do you want to overwrite?", false))
         {
@@ -155,7 +155,7 @@ internal static class Program
         }
     }
 
-    static bool AskYesNo(string question, bool defaultYes = true)
+    private static bool AskYesNo(string question, bool defaultYes = true)
     {
         string defaultOption = defaultYes ? "Y/n" : "y/N";
         while (true)
