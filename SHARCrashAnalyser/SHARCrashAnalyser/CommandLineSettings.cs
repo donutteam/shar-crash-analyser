@@ -26,6 +26,7 @@ internal class CommandLineSettings
                 case "-?":
                 case "--help":
                     Help = true;
+                    IsCLI = true;
                     break;
                 case "-ng":
                 case "--nogui":
