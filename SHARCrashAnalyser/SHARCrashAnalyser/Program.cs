@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -168,7 +170,12 @@ internal static class Program
             }
 
             using var responseContent = response.Content;
-            var csv = await responseContent.ReadAsStringAsync();
+            var json = await responseContent.ReadAsStringAsync();
+
+            var doc = JsonConvert.DeserializeObject<GitHubResponse>(json);
+            var encodedCSV = doc.Content;
+            var csvBytes = Convert.FromBase64String(encodedCSV);
+            var csv = Encoding.UTF8.GetString(csvBytes);
 
             File.WriteAllText(CommandLineSettings.CSVPath, csv);
             Console.WriteLine($"Symbols downloaded to \"{CommandLineSettings.CSVPath}\".");
@@ -198,5 +205,41 @@ internal static class Program
 
             Console.WriteLine("Please enter 'y' or 'n'.");
         }
+    }
+
+    private class GitHubResponse
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        [JsonProperty("path")]
+        public string Path { get; set; }
+
+        [JsonProperty("sha")]
+        public string Sha { get; set; }
+
+        [JsonProperty("size")]
+        public int Size { get; set; }
+
+        [JsonProperty("url")]
+        public string Url { get; set; }
+
+        [JsonProperty("html_url")]
+        public string HtmlUrl { get; set; }
+
+        [JsonProperty("git_url")]
+        public string GitUrl { get; set; }
+
+        [JsonProperty("download_url")]
+        public string DownloadUrl { get; set; }
+
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("content")]
+        public string Content { get; set; }
+
+        [JsonProperty("encoding")]
+        public string Encoding { get; set; }
     }
 }
