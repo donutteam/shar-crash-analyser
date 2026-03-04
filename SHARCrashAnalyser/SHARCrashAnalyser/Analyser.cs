@@ -25,7 +25,7 @@ internal static class Analyser
 
         var createCode = WDebugClient.DebugCreate(null, out var client);
         if (createCode != 0)
-            throw new Exception($"Failed to create debug client. Exit code: {createCode}");
+            throw new Exception($"Failed to create debug client. Exit code: {createCode:X}");
 
         var ctrl = (WDebugControl)client;
         var symbs = (WDebugSymbols)client;
@@ -37,12 +37,13 @@ internal static class Analyser
             ctrl.WaitForEvent(DEBUG_WAIT.DEFAULT, uint.MaxValue);
             symbs.SetScopeFromStoredEvent();
 
-            uint simpsonsIndex;
+            uint simpsonsIndex = uint.MaxValue;
             ulong simpsonsBase = 0;
+            uint hacksIndex = uint.MaxValue;
 
             var getNumberModulesCode = symbs.GetNumberModules(out var loadedModules, out var unloadedModules);
             if (getNumberModulesCode != 0)
-                throw new Exception($"Failed to get number of modules. Exit code: {getNumberModulesCode}");
+                throw new Exception($"Failed to get number of modules. Exit code: {getNumberModulesCode:X}");
 
             for (var i = 0u; i < loadedModules; i++)
             {
@@ -53,39 +54,42 @@ internal static class Analyser
                 {
                     var getModuleCode = symbs.GetModuleByModuleNameWide(moduleName, 0, out simpsonsIndex, out simpsonsBase);
                     if (getModuleCode != 0)
-                        throw new Exception($"Failed to get simpsons module. Exit code: {getModuleCode}");
-
-                    break;
+                        throw new Exception($"Failed to get simpsons module. Exit code: {getModuleCode:X}");
                 }
+                else if (moduleName == "Hacks")
+                {
+                    var getModuleCode = symbs.GetModuleByModuleNameWide(moduleName, 0, out hacksIndex, out _);
+                    if (getModuleCode != 0)
+                        throw new Exception($"Failed to get hacks module. Exit code: {getModuleCode:X}");
+                }
+
+                if (simpsonsIndex != uint.MaxValue && hacksIndex != uint.MaxValue)
+                    break;
             }
 
-            if (simpsonsBase == 0)
+            if (simpsonsIndex == uint.MaxValue)
                 throw new Exception("Simpsons module not found in dump.");
 
             var getParametersCode = symbs.GetModuleParameters(1, [simpsonsBase], 0, out var parms);
             if (getParametersCode != 0)
-                throw new Exception($"Failed to get module parameters. Exit code: {getParametersCode}");
+                throw new Exception($"Failed to get module parameters. Exit code: {getParametersCode:X}");
             var moduleSize = parms[0].Size;
             var checksum = parms[0].Checksum;
 
-            if (File.Exists(Program.CommandLineSettings.HacksPDBPath))
+            if (hacksIndex != uint.MaxValue && File.Exists(Program.CommandLineSettings.HacksPDBPath))
             {
                 var appendPathCode = symbs.AppendSymbolPathWide(Path.GetDirectoryName(Program.CommandLineSettings.HacksPDBPath));
                 if (appendPathCode != 0)
-                    throw new Exception($"Failed to append symbol path. Exit code: {appendPathCode}");
+                    throw new Exception($"Failed to append symbol path. Exit code: {appendPathCode:X}");
 
-                var getModuleCode = symbs.GetModuleByModuleNameWide("Hacks", 0, out var hacksIndex, out _);
-                if (getModuleCode != 0)
-                    throw new Exception($"Failed to get hacks module. Exit code: {getModuleCode}");
-
-                var reloadCode = symbs.ReloadWide($"/f /i {hacksIndex} \"{Program.CommandLineSettings.HacksPDBPath}\"");
-                if (reloadCode != 0)
-                    throw new Exception($"Failed to reload for hacks PDB. Exit code: {reloadCode}");
+                var execCode = ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".reload /f /i Hacks.dll", DEBUG_EXECUTE.DEFAULT);
+                if (execCode != 0)
+                    throw new Exception($"Failed to reload for hacks PDB. Exit code: {execCode:X}");
             }
 
             var getStackTraceCode = ctrl.GetStackTraceEx(0UL, 0UL, 0UL, 100, out var frames);
             if (getStackTraceCode != 0)
-                throw new Exception($"Failed to get stack trace. Exit code: {getStackTraceCode}");
+                throw new Exception($"Failed to get stack trace. Exit code: {getStackTraceCode:X}");
 
             var sb = new StringBuilder();
 
@@ -141,7 +145,7 @@ internal static class Analyser
 
                         var addSyntheticSymbolCode = symbs.AddSyntheticSymbolWide(func.Address, func.Size, func.Name, DEBUG_ADDSYNTHSYM.DEFAULT, out _);
                         if (addSyntheticSymbolCode != 0)
-                            throw new Exception($"Failed to add synthetic symbole. Exit code: {addSyntheticSymbolCode}");
+                            throw new Exception($"Failed to add synthetic symbole. Exit code: {addSyntheticSymbolCode:X}");
                     }
                 }
             }
