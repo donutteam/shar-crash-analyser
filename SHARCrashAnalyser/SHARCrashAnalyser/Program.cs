@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace SHARCrashAnalyser;
@@ -18,7 +20,7 @@ internal static class Program
 
     internal static CommandLineSettings CommandLineSettings;
 
-    public static string Title => $"SHAR Crash Analyser v{Assembly.GetExecutingAssembly().GetName().Version.ToString()}";
+    public static string Title => $"SHAR Crash Analyser v{Assembly.GetExecutingAssembly().GetName().Version}";
 
     /// <summary>
     /// The main entry point for the application.
@@ -30,9 +32,7 @@ internal static class Program
         CommandLineSettings = new(args);
 
         if (CommandLineSettings.UpdateSymbols || !File.Exists(CommandLineSettings.CSVPath))
-        {
-            // TODO
-        }
+            UpdateSymbols().GetAwaiter().GetResult();
 
         if (CommandLineSettings.IsCLI)
         {
@@ -94,6 +94,39 @@ internal static class Program
         {
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey(true);
+        }
+    }
+
+    static async Task UpdateSymbols()
+    {
+        try
+        {
+            var url = $"https://api.github.com/repos/DonutTeam/shar-crash-analyser/contents/Symbols/shar_symbols.csv?ref=main";
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"SHARCrashAnalyser/{Assembly.GetExecutingAssembly().GetName().Version}");
+            httpClient.DefaultRequestHeaders.CacheControl = new()
+            {
+                NoCache = true,
+                NoStore = true,
+            };
+
+            Console.WriteLine($"Downloading symbols from \"{url}\"...");
+            using var response = await httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Failed to download symbols. Status code: {response.StatusCode} ({(int)response.StatusCode}).");
+                return;
+            }
+
+            using var responseContent = response.Content;
+            var csv = await responseContent.ReadAsStringAsync();
+
+            File.WriteAllText(CommandLineSettings.CSVPath, csv);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to download symbols. Error: {ex}");
+            return;
         }
     }
 }
