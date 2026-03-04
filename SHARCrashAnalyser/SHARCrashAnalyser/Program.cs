@@ -35,10 +35,6 @@ internal static class Program
         Console.Title = Title;
         CommandLineSettings = new(args);
 
-        if (CommandLineSettings.UpdateSymbols || !File.Exists(CommandLineSettings.CSVPath))
-            UpdateSymbols().GetAwaiter().GetResult();
-
-
         if (CommandLineSettings.Help)
         {
             Console.WriteLine("Usage: SHARCrashAnalyser [options]");
@@ -48,7 +44,7 @@ internal static class Program
             Console.WriteLine("  -ng, --nogui              Run in CLI mode without GUI");
             Console.WriteLine("  -p, --pause               Pause before exiting");
             Console.WriteLine("  -i, --input <path>        Specify input dump path");
-            Console.WriteLine("  -c, --csv <path>          Specify CSV output path");
+            Console.WriteLine("  -c, --csv <path>          Specify symbols CSV path");
             Console.WriteLine("  -h, --hacks <path>        Specify Hacks PDB path");
             Console.WriteLine("  -us, --updatesymbols      Force update symbols with latest");
 
@@ -60,6 +56,9 @@ internal static class Program
 
             return;
         }
+
+        if (CommandLineSettings.UpdateSymbols || !File.Exists(CommandLineSettings.CSVPath))
+            UpdateSymbols().GetAwaiter().GetResult();
 
         if (CommandLineSettings.IsCLI)
         {
