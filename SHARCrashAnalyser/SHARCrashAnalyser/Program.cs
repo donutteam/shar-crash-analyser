@@ -37,9 +37,39 @@ internal static class Program
         if (CommandLineSettings.UpdateSymbols || !File.Exists(CommandLineSettings.CSVPath))
             UpdateSymbols().GetAwaiter().GetResult();
 
+
+        if (CommandLineSettings.Help)
+        {
+            Console.WriteLine("Usage: SHARCrashAnalyser [options]");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  -?, --help                Show this help message and exit");
+            Console.WriteLine("  -ng, --nogui              Run in CLI mode without GUI");
+            Console.WriteLine("  -p, --pause               Pause before exiting");
+            Console.WriteLine("  -i, --input <path>        Specify input dump path");
+            Console.WriteLine("  -c, --csv <path>          Specify CSV output path");
+            Console.WriteLine("  -h, --hacks <path>        Specify Hacks PDB path");
+            Console.WriteLine("  -us, --updatesymbols      Force update symbols with latest");
+
+            if (CommandLineSettings.Pause)
+            {
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey(true);
+            }
+
+            return;
+        }
+
         if (CommandLineSettings.IsCLI)
         {
             RunCommandLine();
+
+            if (CommandLineSettings.Pause)
+            {
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey(true);
+            }
+
             return;
         }
 
@@ -62,27 +92,6 @@ internal static class Program
 
     static void RunCommandLine()
     {
-        if (CommandLineSettings.Help)
-        {
-            Console.WriteLine("Usage: SHARCrashAnalyser [options]");
-            Console.WriteLine();
-            Console.WriteLine("Options:");
-            Console.WriteLine("  -?, --help                Show this help message and exit");
-            Console.WriteLine("  -ng, --nogui              Run in CLI mode without GUI");
-            Console.WriteLine("  -np, --nopause            Do not pause before exiting");
-            Console.WriteLine("  -i, --input <path>        Specify input dump path");
-            Console.WriteLine("  -c, --csv <path>          Specify CSV output path");
-            Console.WriteLine("  -h, --hacks <path>        Specify Hacks PDB path");
-            Console.WriteLine("  -us, --updatesymbols      Force update symbols with latest");
-
-            if (!CommandLineSettings.NoPause)
-            {
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey(true);
-            }
-            return;
-        }
-
         var dumpPath = CommandLineSettings.DumpPath;
         while (!File.Exists(dumpPath))
         {
@@ -102,10 +111,7 @@ internal static class Program
             Console.WriteLine($"There was an error analysing dump: {ex}");
         }
 
-        if (!CommandLineSettings.NoPause)
         {
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey(true);
         }
     }
 
