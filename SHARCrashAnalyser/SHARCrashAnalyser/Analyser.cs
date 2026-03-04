@@ -212,9 +212,12 @@ internal static class Analyser
                 }
             }
 
-            sb.AppendLine("=== MODULES ===");
-            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "lmv", DEBUG_EXECUTE.DEFAULT);
-            sb.AppendLine();
+            if (!Program.CommandLineSettings.NoModules)
+            {
+                sb.AppendLine("=== MODULES ===");
+                ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "lmv", DEBUG_EXECUTE.DEFAULT);
+                sb.AppendLine();
+            }
 
             client.SetOutputCallbacksWide(null);
 

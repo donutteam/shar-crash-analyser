@@ -8,6 +8,7 @@ internal class CommandLineSettings
     public bool Help { get; private set; } = false;
     public bool IsCLI { get; private set; } = false;
     public bool Pause { get; private set; } = false;
+    public bool NoModules { get; private set; } = false;
     public string DumpPath { get; private set; } = null;
     public string CSVPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shar_symbols.csv");
     public string HacksPDBPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Hacks.pdb");
@@ -30,6 +31,10 @@ internal class CommandLineSettings
                 case "-p":
                 case "--pause":
                     Pause = true;
+                    break;
+                case "-nm":
+                case "--nomodules":
+                    NoModules = true;
                     break;
                 case "-i":
                 case "--input":

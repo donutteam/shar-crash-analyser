@@ -43,6 +43,7 @@ internal static class Program
             Console.WriteLine("  -?, --help                Show this help message and exit");
             Console.WriteLine("  -ng, --nogui              Run in CLI mode without GUI");
             Console.WriteLine("  -p, --pause               Pause before exiting");
+            Console.WriteLine("  -nm, --nomodules          Exclude modules from analysis");
             Console.WriteLine("  -i, --input <path>        Specify input dump path");
             Console.WriteLine("  -c, --csv <path>          Specify symbols CSV path");
             Console.WriteLine("  -h, --hacks <path>        Specify Hacks PDB path");
