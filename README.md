@@ -1,5 +1,5 @@
 # SHARCrashAnalyser
-A tool to analyse The Simpsons: Hit and Run crash dumps.
+Powered by [WinDbg](https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools) and a CSV of known SHAR functions, this tool will open and analyze SHAR crash dumps, and return the stack trace.
 
 # Requirements
 * .NET Framework v4.8.1
