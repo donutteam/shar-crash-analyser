@@ -99,6 +99,12 @@ internal static class Program
 
     static async Task UpdateSymbols()
     {
+        if (File.Exists(CommandLineSettings.CSVPath) && !AskYesNo($"Symbols file \"{CommandLineSettings.CSVPath}\" already exists. Do you want to overwrite?", false))
+        {
+            Console.WriteLine("Not overwriting symbols.");
+            return;
+        }
+
         try
         {
             var url = $"https://api.github.com/repos/DonutTeam/shar-crash-analyser/contents/Symbols/shar_symbols.csv?ref=main";
@@ -122,11 +128,32 @@ internal static class Program
             var csv = await responseContent.ReadAsStringAsync();
 
             File.WriteAllText(CommandLineSettings.CSVPath, csv);
+            Console.WriteLine($"Symbols downloaded to \"{CommandLineSettings.CSVPath}\".");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to download symbols. Error: {ex}");
             return;
+        }
+    }
+
+    static bool AskYesNo(string question, bool defaultYes = true)
+    {
+        string defaultOption = defaultYes ? "Y/n" : "y/N";
+        while (true)
+        {
+            Console.Write($"{question} [{defaultOption}]: ");
+            string? input = Console.ReadLine()?.Trim().ToLower();
+
+            if (string.IsNullOrEmpty(input))
+                return defaultYes;
+
+            if (input == "y" || input == "yes")
+                return true;
+            if (input == "n" || input == "no")
+                return false;
+
+            Console.WriteLine("Please enter 'y' or 'n'.");
         }
     }
 }
