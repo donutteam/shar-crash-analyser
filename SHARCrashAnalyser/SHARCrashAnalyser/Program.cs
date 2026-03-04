@@ -16,6 +16,9 @@ internal static class Program
     [DllImport("user32.dll")]
     static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("kernel32.dll")]
+    static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
+
     const int SW_HIDE = 0;
 
     internal static CommandLineSettings CommandLineSettings;
@@ -40,8 +43,17 @@ internal static class Program
             return;
         }
 
-        var handle = GetConsoleWindow();
-        ShowWindow(handle, SW_HIDE);
+        uint[] processList = new uint[1];
+        uint processCount = GetConsoleProcessList(processList, (uint)processList.Length);
+        
+        if (processCount == 1)
+        {
+            var handle = GetConsoleWindow();
+            if (handle != IntPtr.Zero)
+            {
+                ShowWindow(handle, SW_HIDE);
+            }
+        }
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
