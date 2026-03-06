@@ -216,6 +216,19 @@ internal static class Analyser
                 }
             }
 
+            if (Program.CommandLineSettings.DumpStrings)
+            {
+                sb.AppendLine("=== STRINGS ===");
+                if (!string.IsNullOrEmpty(Program.CommandLineSettings.StringsFilter))
+                    sb.AppendLine($"Filter: {Program.CommandLineSettings.StringsFilter}");
+
+                var strings = DumpStrings(ref dataSpaces, simpsonsBase, moduleSize, 4);
+                foreach (var s in strings)
+                    sb.AppendLine(s);
+
+                sb.AppendLine();
+            }
+
             if (!Program.CommandLineSettings.NoModules)
             {
                 sb.AppendLine("=== MODULES ===");
@@ -234,18 +247,110 @@ internal static class Analyser
         }
     }
 
-    private class FunctionEntry
+    private static List<string> DumpStrings(ref WDebugDataSpaces dataSpaces, ulong startAddress, ulong size, int minLen)
     {
-        public ulong Address { get; set; }
-        public uint Size { get; set; }
-        public string Name { get; set; }
+        var results = new List<string>();
+        var sb = new StringBuilder();
 
-        public FunctionEntry(ulong address, uint size, string name)
+        var pageSize = 4096UL;
+        var currentOffset = 0UL;
+
+        while (currentOffset < size)
         {
-            Address = address;
-            Size = size;
-            Name = name;
+            var currentAddr = startAddress + currentOffset;
+
+            if (dataSpaces.QueryVirtual(currentAddr, out var mbi) == 0)
+            {
+                bool isReadable = mbi.State == MEM.COMMIT && !mbi.Protect.HasFlag(PAGE.NOACCESS) && !mbi.Protect.HasFlag(PAGE.GUARD);
+
+                if (!isReadable)
+                {
+                    var bytesToSkip = mbi.BaseAddress + mbi.RegionSize - currentAddr;
+                    currentOffset += bytesToSkip;
+
+                    if (sb.Length >= minLen)
+                        AddFilteredString(results, sb);
+
+                    sb.Clear();
+                    continue;
+                }
+            }
+
+            var remainingInModule = size - currentOffset;
+            var toRead = (uint)Math.Min(pageSize, remainingInModule);
+
+            var readVirtualCode = dataSpaces.ReadVirtual(currentAddr, toRead, out byte[] buffer);
+            if (readVirtualCode == 0 && buffer != null)
+            {
+                ExtractAsciiStrings(buffer, results, sb, minLen);
+            }
+            else
+            {
+                if (sb.Length >= minLen)
+                    AddFilteredString(results, sb);
+
+                sb.Clear();
+            }
+
+            currentOffset += toRead;
         }
+
+        if (sb.Length >= minLen)
+            AddFilteredString(results, sb);
+
+        return results;
+    }
+
+    private static void ExtractAsciiStrings(byte[] data, List<string> results, StringBuilder sb, int minLen)
+    {
+        for (int i = 0; i < data.Length; i++)
+        {
+            var b = data[i];
+
+            if (b >= 32 && b <= 126)
+            {
+                sb.Append((char)b);
+            }
+            else
+            {
+                if (sb.Length > 0)
+                {
+                    if (sb.Length >= minLen)
+                        AddFilteredString(results, sb);
+
+                    sb.Clear();
+                }
+            }
+        }
+    }
+
+    private static void AddFilteredString(List<string> results, StringBuilder sb)
+    {
+        var s = sb.ToString();
+
+        if (!string.IsNullOrEmpty(Program.CommandLineSettings.StringsFilter) && s.IndexOf(Program.CommandLineSettings.StringsFilter, StringComparison.InvariantCultureIgnoreCase) < 0)
+            return;
+
+        var isRepeating = true;
+        for (int i = 1; i < s.Length; i++)
+        {
+            if (s[i] != s[0])
+            {
+                isRepeating = false;
+                break;
+            }
+        }
+        if (isRepeating)
+            return;
+
+        results.Add(s);
+    }
+
+    private class FunctionEntry(ulong address, uint size, string name)
+    {
+        public ulong Address { get; set; } = address;
+        public uint Size { get; set; } = size;
+        public string Name { get; set; } = name;
     }
 
     private class DebugOutputCallback : IDebugOutputCallbacksImp
