@@ -145,7 +145,7 @@ internal static class Analyser
 
                         var addSyntheticSymbolCode = symbs.AddSyntheticSymbolWide(func.Address, func.Size, func.Name, DEBUG_ADDSYNTHSYM.DEFAULT, out _);
                         if (addSyntheticSymbolCode != 0)
-                            throw new Exception($"Failed to add synthetic symbole. Exit code: {addSyntheticSymbolCode:X}");
+                            throw new Exception($"Failed to add synthetic symbol. Exit code: {addSyntheticSymbolCode:X}");
                     }
                 }
             }
