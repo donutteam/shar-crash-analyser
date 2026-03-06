@@ -34,6 +34,10 @@ Powered by [WinDbg](https://docs.microsoft.com/en-us/windows-hardware/drivers/de
   * Specify Hacks PDB path
 * `-nm`|`--nomodules`
   * Exclude modules from analysis
+* `-ds`|`--dumpstrings`
+  * Dump strings in analysis
+* `-sf`|`--stringsfilter <filter>`
+  * Filter dumped strings
 * `-us`|`--updatesymbols`
   * Force update symbols with latest
 
