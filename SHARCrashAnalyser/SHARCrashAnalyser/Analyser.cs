@@ -82,7 +82,7 @@ internal static class Analyser
                 if (appendPathCode != 0)
                     throw new Exception($"Failed to append symbol path. Exit code: {appendPathCode:X}");
 
-                var execCode = ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".reload /f /i Hacks.dll", DEBUG_EXECUTE.DEFAULT);
+                var execCode = ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".reload /f Hacks.dll", DEBUG_EXECUTE.DEFAULT);
                 if (execCode != 0)
                     throw new Exception($"Failed to reload for hacks PDB. Exit code: {execCode:X}");
             }
