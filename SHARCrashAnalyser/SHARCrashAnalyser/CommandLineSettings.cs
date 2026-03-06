@@ -68,5 +68,8 @@ internal class CommandLineSettings
                     break;
             }
         }
+
+        if (args.Length > 0 && string.IsNullOrWhiteSpace(DumpPath) && File.Exists(args[args.Length - 1]))
+            DumpPath = args[args.Length - 1];
     }
 }
