@@ -193,7 +193,7 @@ internal static class Program
         while (true)
         {
             Console.Write($"{question} [{defaultOption}]: ");
-            string? input = Console.ReadLine()?.Trim().ToLower();
+            string input = Console.ReadLine()?.Trim().ToLower();
 
             if (string.IsNullOrEmpty(input))
                 return defaultYes;
