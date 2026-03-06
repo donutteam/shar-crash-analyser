@@ -229,6 +229,7 @@ internal static class Analyser
         }
         finally
         {
+            client.EndSession(DEBUG_END.ACTIVE_DETACH);
             client.Dispose();
         }
     }
