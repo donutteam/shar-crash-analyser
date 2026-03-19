@@ -10,7 +10,7 @@ internal class CommandLineSettings
     public bool Pause { get; private set; } = false;
     public string DumpPath { get; private set; } = null;
     public string CSVPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shar_symbols.csv");
-    public string HacksPDBPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Hacks.pdb");
+    public string HacksPDBsPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HacksPDBs");
     public bool NoModules { get; private set; } = false;
     public bool DumpStrings { get; private set; } = false;
     public string StringsFilter { get; private set; } = null;
@@ -47,7 +47,7 @@ internal class CommandLineSettings
                 case "-h":
                 case "--hacks":
                     if (i + 1 < args.Length)
-                        HacksPDBPath = args[++i];
+                        HacksPDBsPath = args[++i];
                     break;
                 case "-nm":
                 case "--nomodules":

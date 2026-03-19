@@ -76,11 +76,9 @@ internal static class Analyser
             var moduleSize = parms[0].Size;
             var checksum = parms[0].Checksum;
 
-            if (hacksIndex != uint.MaxValue && File.Exists(Program.CommandLineSettings.HacksPDBPath))
+            if (hacksIndex != uint.MaxValue && Directory.Exists(Program.CommandLineSettings.HacksPDBsPath))
             {
-                var appendPathCode = symbs.AppendSymbolPathWide(Path.GetDirectoryName(Program.CommandLineSettings.HacksPDBPath));
-                if (appendPathCode != 0)
-                    throw new Exception($"Failed to append symbol path. Exit code: {appendPathCode:X}");
+                LoadModuleDir(ref symbs, Program.CommandLineSettings.HacksPDBsPath);
 
                 var execCode = ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".reload /f Hacks.dll", DEBUG_EXECUTE.DEFAULT);
                 if (execCode != 0)
@@ -245,6 +243,16 @@ internal static class Analyser
             client.EndSession(DEBUG_END.ACTIVE_DETACH);
             client.Dispose();
         }
+    }
+
+    private static void LoadModuleDir(ref WDebugSymbols symbs, string path)
+    {
+        var appendPathCode = symbs.AppendSymbolPathWide(path);
+        if (appendPathCode != 0)
+            throw new Exception($"Failed to append symbol path \"{path}\". Exit code: {appendPathCode:X}");
+
+        foreach (var directory in Directory.GetDirectories(path))
+            LoadModuleDir(ref symbs, directory);
     }
 
     private static List<string> DumpStrings(ref WDebugDataSpaces dataSpaces, ulong startAddress, ulong size, int minLen)
