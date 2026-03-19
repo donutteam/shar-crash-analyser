@@ -221,7 +221,7 @@ internal static class Analyser
                 if (!string.IsNullOrEmpty(Program.CommandLineSettings.StringsFilter))
                     sb.AppendLine($"Filter: {Program.CommandLineSettings.StringsFilter}");
 
-                var strings = DumpStrings(ref dataSpaces, simpsonsBase, moduleSize, 4);
+                var strings = DumpStrings(ref dataSpaces, simpsonsBase, moduleSize, 7);
                 foreach (var s in strings)
                     sb.AppendLine(s);
 
