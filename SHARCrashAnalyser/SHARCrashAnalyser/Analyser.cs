@@ -37,6 +37,11 @@ internal static class Analyser
             ctrl.WaitForEvent(DEBUG_WAIT.DEFAULT, uint.MaxValue);
             symbs.SetScopeFromStoredEvent();
 
+            var frames = new DEBUG_STACK_FRAME_EX[100];
+            var getStackTraceCode = ctrl.GetStackTraceEx(0UL, 0UL, 0UL, out frames);
+            if (getStackTraceCode != 0)
+                throw new Exception($"Failed to get stack trace. Exit code: {getStackTraceCode:X}");
+
             uint simpsonsIndex = uint.MaxValue;
             ulong simpsonsBase = 0;
             uint hacksIndex = uint.MaxValue;
@@ -80,14 +85,10 @@ internal static class Analyser
             {
                 LoadModuleDir(ref symbs, Program.CommandLineSettings.HacksPDBsPath);
 
-                var execCode = ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".reload /f Hacks.dll", DEBUG_EXECUTE.DEFAULT);
-                if (execCode != 0)
-                    throw new Exception($"Failed to reload for hacks PDB. Exit code: {execCode:X}");
+                var reloadCode = symbs.ReloadWide("/f");
+                if (reloadCode != 0)
+                    throw new Exception($"Failed to reload symbols for Hacks PDB. Exit code: {reloadCode:X}");
             }
-
-            var getStackTraceCode = ctrl.GetStackTraceEx(0UL, 0UL, 0UL, 100, out var frames);
-            if (getStackTraceCode != 0)
-                throw new Exception($"Failed to get stack trace. Exit code: {getStackTraceCode:X}");
 
             var sb = new StringBuilder();
 
