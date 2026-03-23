@@ -2594,6 +2594,7 @@
 "00458540","140","CollectDumpedObjective::CollectDumpedObjective"
 "004585d0","27","CollectDumpedObjective::~CollectDumpedObjective"
 "004585f0","21","CollectDumpedObjective::meth_0x4585f0"
+"00458610","18","CollectDumpedObjective::BindCollectibleToWaypoint"
 "00458640","449","CollectDumpedObjective::HandleEvent"
 "00458810","788","CollectDumpedObjective::OnInitCollectibleObjective"
 "00458b30","176","CollectDumpedObjective::OnFinalizeCollectibleObjective"
