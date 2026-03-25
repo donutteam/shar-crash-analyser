@@ -30,6 +30,7 @@ internal static class Analyser
         var ctrl = (WDebugControl)client;
         var symbs = (WDebugSymbols)client;
         var dataSpaces = (WDebugDataSpaces)client;
+        var registers = (WDebugRegisters)client;
 
         try
         {
@@ -90,10 +91,10 @@ internal static class Analyser
                     throw new Exception($"Failed to reload symbols for Hacks PDB. Exit code: {reloadCode:X}");
             }
 
-            var sb = new StringBuilder();
+            var sb = new StringBuilder("=== ANALYSER ERRORS ===\r\n");
 
             if (!KnownChecksums.TryGetValue(checksum, out var release))
-                release = "Unkown";
+                release = "Unknown";
             if (checksum != EXPECTED_CHECKSUM)
             {
                 sb.AppendLine("Unsupported game version detected.");
@@ -144,25 +145,146 @@ internal static class Analyser
 
                         var addSyntheticSymbolCode = symbs.AddSyntheticSymbolWide(func.Address, func.Size, func.Name, DEBUG_ADDSYNTHSYM.DEFAULT, out _);
                         if (addSyntheticSymbolCode != 0)
-                            throw new Exception($"Failed to add synthetic symbol. Exit code: {addSyntheticSymbolCode:X}");
+                        {
+                            switch ((uint)addSyntheticSymbolCode)
+                            {
+                                case 0x800700B7: // already exists
+                                    continue;
+                                default:
+                                    sb.AppendLine($"Failed to add synthetic symbol {func.Name} (0x{func.Address:X}). Exit code: {addSyntheticSymbolCode:X}");
+                                    break;
+                            }
+                        }
                     }
                 }
             }
+
+            if (sb.Length == 25)
+                sb.Clear();
+            else
+                sb.AppendLine();
 
             client.SetOutputCallbacksWide(new DebugOutputCallback(ref sb));
 
             sb.AppendLine("=== EXCEPTION RECORD ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, ".exr -1", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
-
             ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".excr", DEBUG_EXECUTE.DEFAULT);
-            sb.AppendLine("=== REGISTERS ===");
-            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "r", DEBUG_EXECUTE.DEFAULT);
+
+            sb.AppendLine("=== FAULTING INSTRUCTION ===");
+            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "u @eip-5 L10", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
 
             sb.AppendLine("=== STACK TRACE ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "kn", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
+
+            sb.AppendLine("=== REGISTERS ===");
+            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "r", DEBUG_EXECUTE.DEFAULT);
+            sb.AppendLine();
+
+            var registerStringsHeaderAdded = false;
+            if (registers.GetNumberRegisters(out var reguistersCount) == 0)
+            {
+                for (var i = 0u; i < reguistersCount; i++)
+                {
+                    if (registers.GetDescriptionWide(i, out var registerName, out var registerDesc) != 0)
+                        continue;
+
+                    if (registers.GetValue(i, out var registerValue) != 0)
+                        continue;
+                    var regValue = registerValue.I64;
+
+                    if (registerName == "esp")
+                    {
+                        var bytesToRead = 256u;
+                        if (dataSpaces.ReadVirtual(regValue, bytesToRead, out var stackBuffer) == 0)
+                        {
+                            for (int j = 0; j < bytesToRead; j += 4)
+                            {
+                                uint stackValue = BitConverter.ToUInt32(stackBuffer, j);
+
+                                if (TryReadString(ref dataSpaces, stackValue, out var espStr))
+                                {
+                                    if (!registerStringsHeaderAdded)
+                                    {
+                                        sb.AppendLine("=== REGISTER POINTERS (STRINGS) ===");
+                                        registerStringsHeaderAdded = true;
+                                    }
+                                    sb.AppendLine($"esp: {regValue + (ulong)j:X8}  {stackValue:X8} - {espStr}");
+                                }
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (regValue < 0x1000)
+                        continue;
+
+                    if (TryReadString(ref dataSpaces, regValue, out var str))
+                    {
+                        if (!registerStringsHeaderAdded)
+                        {
+                            sb.AppendLine("=== REGISTER POINTERS (STRINGS) ===");
+                            registerStringsHeaderAdded = true;
+                        }
+                        sb.AppendLine($"{registerName}: {regValue:X8} - {str}");
+                    }
+                }
+            }
+            if (registerStringsHeaderAdded)
+                sb.AppendLine();
+
+            sb.AppendLine("=== STACK (RAW) ===");
+            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "dps esp", DEBUG_EXECUTE.DEFAULT);
+            sb.AppendLine();
+
+            if (Program.CommandLineSettings.DumpStrings)
+            {
+                sb.AppendLine("=== STRINGS ===");
+                if (!string.IsNullOrEmpty(Program.CommandLineSettings.StringsFilter))
+                    sb.AppendLine($"Filter: {Program.CommandLineSettings.StringsFilter}");
+
+                var strings = DumpStrings(ref dataSpaces, simpsonsBase, moduleSize, 7);
+                foreach (var s in strings)
+                    sb.AppendLine(s);
+
+                sb.AppendLine();
+            }
+
+            if (ctrl.GetLastEventInformationWide(out var eventType, out var processId, out var threadId, out var extraInformation, out var description) == 0)
+            {
+                var faultAddress = extraInformation.Exception.ExceptionRecord.ExceptionAddress;
+                sb.AppendLine("=== FAULT ADDRESS ===");
+                sb.AppendLine($"0x{faultAddress:X8}");
+                sb.AppendLine();
+
+                var startAddress = faultAddress - 32UL;
+                var bytesRequested = 64u;
+                if (faultAddress >= 32 && dataSpaces.ReadVirtual(startAddress, bytesRequested, out var buffer) == 0)
+                {
+                    sb.AppendLine("=== MEMORY AROUND FAULT ===");
+
+                    for (var i = 0u; i < bytesRequested; i += 16)
+                    {
+                        var lineAddress = startAddress + i;
+                        var hexBytes = new StringBuilder();
+                        for (var j = 0; j < 16; j++)
+                            if (i + j < bytesRequested)
+                                hexBytes.Append($"{buffer[i + j]:X2} ");
+                        sb.AppendLine($"{lineAddress:X8}: {hexBytes}");
+                    }
+
+                    sb.AppendLine();
+                }
+            }
+
+            if (!Program.CommandLineSettings.NoModules)
+            {
+                sb.AppendLine("=== MODULES ===");
+                ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "lmv", DEBUG_EXECUTE.DEFAULT);
+                sb.AppendLine();
+            }
 
             if (ctrl.GetSystemVersionValues(out var platformId, out var win32Major, out var win32Minor, out var kdMajor, out var kdMinor) == 0)
             {
@@ -188,53 +310,6 @@ internal static class Analyser
                 sb.AppendLine();
             }
 
-            if (ctrl.GetLastEventInformationWide(out var eventType, out var processId, out var threadId, out var extraInformation, out var description) == 0)
-            {
-                var faultAddress = extraInformation.Exception.ExceptionRecord.ExceptionAddress;
-                sb.AppendLine("=== FAULT ADDRESS ===");
-                sb.AppendLine($"0x{faultAddress:X8}");
-                sb.AppendLine();
-
-                var startAddress = faultAddress - 32UL;
-                var bytesRequested = 64u;
-                if (faultAddress >= 32 && dataSpaces.ReadVirtual(startAddress, bytesRequested, out var buffer) == 0)
-                {
-                    sb.AppendLine("=== MEMORY AROUND FAULT ===");
-
-                    for (var i = 0u; i < bytesRequested; i += 8)
-                    {
-                        var lineAddress = startAddress + i;
-                        var hexBytes = new StringBuilder();
-                        for (var j = 0; j < 16; j++)
-                            if (i + j < bytesRequested)
-                                hexBytes.Append($"{buffer[i + j]:X2} ");
-                        sb.AppendLine($"{lineAddress:X8}: {hexBytes}");
-                    }
-
-                    sb.AppendLine();
-                }
-            }
-
-            if (Program.CommandLineSettings.DumpStrings)
-            {
-                sb.AppendLine("=== STRINGS ===");
-                if (!string.IsNullOrEmpty(Program.CommandLineSettings.StringsFilter))
-                    sb.AppendLine($"Filter: {Program.CommandLineSettings.StringsFilter}");
-
-                var strings = DumpStrings(ref dataSpaces, simpsonsBase, moduleSize, 7);
-                foreach (var s in strings)
-                    sb.AppendLine(s);
-
-                sb.AppendLine();
-            }
-
-            if (!Program.CommandLineSettings.NoModules)
-            {
-                sb.AppendLine("=== MODULES ===");
-                ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "lmv", DEBUG_EXECUTE.DEFAULT);
-                sb.AppendLine();
-            }
-
             client.SetOutputCallbacksWide(null);
 
             return sb.ToString();
@@ -254,6 +329,36 @@ internal static class Analyser
 
         foreach (var directory in Directory.GetDirectories(path))
             LoadModuleDir(ref symbs, directory);
+    }
+
+    private static bool TryReadString(ref WDebugDataSpaces dataSpaces, ulong address, out string result)
+    {
+        result = null;
+
+        const int maxLength = 256;
+        var buffer = new byte[maxLength];
+
+        if (dataSpaces.ReadVirtual(address, maxLength, out buffer) != 0)
+            return false;
+
+        int length = 0;
+
+        for (; length < maxLength; length++)
+        {
+            byte b = buffer[length];
+
+            if (b == 0)
+                break;
+
+            if (b < 0x20 || b > 0x7E)
+                return false;
+        }
+
+        if (length == 0)
+            return false;
+
+        result = Encoding.ASCII.GetString(buffer, 0, length);
+        return true;
     }
 
     private static List<string> DumpStrings(ref WDebugDataSpaces dataSpaces, ulong startAddress, ulong size, int minLen)
