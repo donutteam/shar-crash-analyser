@@ -3671,7 +3671,7 @@
 "00480820","29","Mission::ShowHUD"
 "00480840","80","CGuiScreenHud::SetVisible"
 "00480890","13","CGuiScreenHud::SetTimerBlinkingInterval"
-"004808a0","87","FUN_004808a0"
+"004808a0","87","CGuiScreenHud::SetParTime"
 "00480900","99","CGuiScreenHud::SetCollectibles"
 "00480970","199","CGuiScreenHud::SetRacePosition"
 "00480a40","148","CGuiScreenHud::SetLap"
