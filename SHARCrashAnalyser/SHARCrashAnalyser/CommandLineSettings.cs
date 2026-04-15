@@ -15,6 +15,7 @@ internal class CommandLineSettings
     public bool DumpStrings { get; private set; } = false;
     public string StringsFilter { get; private set; } = null;
     public bool UpdateSymbols { get; private set; } = false;
+    public uint StackDepth { get; private set; } = 128u;
 
     public CommandLineSettings(string[] args)
     {
@@ -65,6 +66,12 @@ internal class CommandLineSettings
                 case "-us":
                 case "--updatesymbols":
                     UpdateSymbols = true;
+                    break;
+                case "-sd":
+                case "--stackdepth":
+                    if (i + 1 < args.Length)
+                        if (uint.TryParse(args[++i], out var stackDepth) && stackDepth % 4 == 0)
+                            StackDepth = stackDepth;
                     break;
             }
         }

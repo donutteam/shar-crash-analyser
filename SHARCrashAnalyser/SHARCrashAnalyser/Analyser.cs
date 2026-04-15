@@ -93,6 +93,7 @@ internal static class Analyser
 
             var sb = new StringBuilder("=== ANALYSER ERRORS ===\r\n");
 
+            List<FunctionEntry> funcsSorted = [];
             if (!KnownChecksums.TryGetValue(checksum, out var release))
                 release = "Unknown";
             if (checksum != EXPECTED_CHECKSUM)
@@ -120,7 +121,7 @@ internal static class Analyser
                         if (!line.StartsWith("\"") || !line.EndsWith("\""))
                             continue;
 
-                        var parts = line.Substring(1, line.Length - 2).Split(new string[] { "\",\"" }, StringSplitOptions.None);
+                        var parts = line.Substring(1, line.Length - 2).Split(["\",\""], StringSplitOptions.None);
                         if (parts.Length != 3)
                             continue;
 
@@ -134,13 +135,19 @@ internal static class Analyser
                         funcs.Add(new(address, size, parts[2]));
                     }
 
+                    funcsSorted = [.. funcs.OrderBy(x => x.Address)];
+                    var funcsAdded = new HashSet<ulong>();
+
                     foreach (var frame in frames)
                     {
                         if (frame.InstructionOffset == 0)
                             continue;
 
-                        var func = funcs.FirstOrDefault(f => frame.InstructionOffset >= f.Address && frame.InstructionOffset < (f.Address + f.Size));
+                        var func = FindFunction(funcsSorted, frame.InstructionOffset);
                         if (func == null)
+                            continue;
+
+                        if (!funcsAdded.Add(func.Address))
                             continue;
 
                         var addSyntheticSymbolCode = symbs.AddSyntheticSymbolWide(func.Address, func.Size, func.Name, DEBUG_ADDSYNTHSYM.DEFAULT, out _);
@@ -197,7 +204,7 @@ internal static class Analyser
 
                     if (registerName == "esp")
                     {
-                        var bytesToRead = 256u;
+                        const uint bytesToRead = 256u;
                         if (dataSpaces.ReadVirtual(regValue, bytesToRead, out var stackBuffer) == 0)
                         {
                             for (int j = 0; j < bytesToRead; j += 4)
@@ -236,7 +243,34 @@ internal static class Analyser
                 sb.AppendLine();
 
             sb.AppendLine("=== STACK (RAW) ===");
-            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "dps esp", DEBUG_EXECUTE.DEFAULT);
+            //ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "dps esp", DEBUG_EXECUTE.DEFAULT);
+            if (registers.GetIndexByNameWide("esp", out var espIndex) == 0 && registers.GetValue(espIndex, out var espValue) == 0 && dataSpaces.ReadVirtual(espValue.I64, Program.CommandLineSettings.StackDepth, out var espBuffer) == 0)
+            {
+                for (int i = 0; i < espBuffer.Length; i += 4)
+                {
+                    ulong stackAddr = espValue.I64 + (ulong)i;
+                    uint value = BitConverter.ToUInt32(espBuffer, i);
+                    ulong addr = value;
+
+                    string symbol = "";
+
+                    if (addr >= simpsonsBase && addr < simpsonsBase + moduleSize)
+                    {
+                        var func = FindFunction(funcsSorted, addr);
+                        if (func != null)
+                        {
+                            ulong offset = addr - func.Address;
+                            symbol = $"Simpsons!{func.Name}+0x{offset:X}";
+                        }
+                        else
+                        {
+                            symbol = $"Simpsons+0x{addr - simpsonsBase:X}";
+                        }
+                    }
+
+                    sb.AppendLine($"{stackAddr:X8}  {addr:X8} {symbol}");
+                }
+            }
             sb.AppendLine();
 
             if (Program.CommandLineSettings.DumpStrings)
@@ -329,6 +363,32 @@ internal static class Analyser
 
         foreach (var directory in Directory.GetDirectories(path))
             LoadModuleDir(ref symbs, directory);
+    }
+
+    private static FunctionEntry FindFunction(List<FunctionEntry> funcs, ulong addr)
+    {
+        int left = 0, right = funcs.Count - 1;
+
+        while (left <= right)
+        {
+            int mid = (left + right) / 2;
+            var f = funcs[mid];
+
+            if (addr < f.Address)
+            {
+                right = mid - 1;
+            }
+            else if (addr >= f.Address + f.Size)
+            {
+                left = mid + 1;
+            }
+            else
+            {
+                return f;
+            }
+        }
+
+        return null;
     }
 
     private static bool TryReadString(ref WDebugDataSpaces dataSpaces, ulong address, out string result)

@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
@@ -49,6 +50,7 @@ internal static class Program
             Console.WriteLine("  -c, --csv <path>                   Specify symbols CSV path");
             Console.WriteLine("  -h, --hacks <path>                 Specify Hacks PDB path");
             Console.WriteLine("  -nm, --nomodules                   Exclude modules from analysis");
+            Console.WriteLine("  -sd, --stackdepth <depth>          The depth of the raw stack output");
             Console.WriteLine("  -ds, --dumpstrings                 Dump strings in analysis");
             Console.WriteLine("  -sf, --stringsfilter <filter>      Filter dumped strings");
             Console.WriteLine("  -us, --updatesymbols               Force update symbols with latest");
@@ -108,7 +110,11 @@ internal static class Program
 
         try
         {
+            var sw = Stopwatch.StartNew();
             var dump = Analyser.AnalyseDump(dumpPath);
+            sw.Stop();
+            Console.WriteLine($"Analysed in {sw.Elapsed:mm\\:ss\\.fff}.");
+            Console.WriteLine();
             PrintColouredConsole(dump);
         }
         catch (Exception ex)
