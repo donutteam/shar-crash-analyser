@@ -267,10 +267,9 @@ internal static class Analyser
 
                     if (registerName == "esp")
                     {
-                        const uint bytesToRead = 256u;
-                        if (dataSpaces.ReadVirtual(regValue, bytesToRead, out var stackBuffer) == 0)
+                        if (dataSpaces.ReadVirtual(regValue, Program.CommandLineSettings.StackDepth, out var stackBuffer) == 0)
                         {
-                            for (int j = 0; j < bytesToRead; j += 4)
+                            for (int j = 0; j < Program.CommandLineSettings.StackDepth; j += 4)
                             {
                                 uint stackValue = BitConverter.ToUInt32(stackBuffer, j);
 
