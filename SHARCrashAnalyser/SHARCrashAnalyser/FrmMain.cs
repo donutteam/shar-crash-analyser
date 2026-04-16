@@ -72,7 +72,15 @@ public partial class FrmMain : Form
             TxtDumpPath.Text = filePath;
 
             string dump = Analyser.AnalyseDump(filePath);
-            SetColouredRTBText(RTBAnalysis, dump);
+            if (Program.CommandLineSettings.NoColour)
+            {
+                RTBAnalysis.Clear();
+                RTBAnalysis.Text = dump;
+            }
+            else
+            {
+                SetColouredRTBText(RTBAnalysis, dump);
+            }
         }
         catch (Exception ex)
         {

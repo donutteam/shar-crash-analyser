@@ -44,6 +44,8 @@ internal static class Program
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  -?, --help                         Show this help message and exit");
+            Console.WriteLine("  -v, --verbose                      Enable verbose output");
+            Console.WriteLine("  -nc, --nocolour                    Disable coloured output");
             Console.WriteLine("  -ng, --nogui                       Run in CLI mode without GUI");
             Console.WriteLine("  -p, --pause                        Pause before exiting");
             Console.WriteLine("  -i, --input <path>                 Specify input dump path");
@@ -115,7 +117,10 @@ internal static class Program
             sw.Stop();
             Console.WriteLine($"Analysed in {sw.Elapsed:mm\\:ss\\.fff}.");
             Console.WriteLine();
-            PrintColouredConsole(dump);
+            if (CommandLineSettings.NoColour)
+                Console.WriteLine(dump);
+            else
+                PrintColouredConsole(dump);
         }
         catch (Exception ex)
         {

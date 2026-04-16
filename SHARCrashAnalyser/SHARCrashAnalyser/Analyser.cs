@@ -2,6 +2,7 @@
 using Microsoft.Diagnostics.Runtime.Interop;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -23,6 +24,8 @@ internal static class Analyser
         if (!File.Exists(filePath))
             throw new FileNotFoundException("Could not find crash dump as the specified path", filePath);
 
+        Stopwatch sw = Program.CommandLineSettings.Verbose ? Stopwatch.StartNew() : null;
+
         var createCode = WDebugClient.DebugCreate(null, out var client);
         if (createCode != 0)
             throw new Exception($"Failed to create debug client. Exit code: {createCode:X}");
@@ -32,20 +35,60 @@ internal static class Analyser
         var dataSpaces = (WDebugDataSpaces)client;
         var registers = (WDebugRegisters)client;
 
+        if (Program.CommandLineSettings.Verbose)
+        {
+            sw.Stop();
+            Console.WriteLine($"Created debug client in {sw.Elapsed:mm\\:ss\\.fff}.");
+        }
+
         try
         {
+            if (Directory.Exists(Program.CommandLineSettings.HacksPDBsPath))
+            {
+                if (Program.CommandLineSettings.Verbose)
+                    sw.Restart();
+
+                LoadModuleDir(ref symbs, Program.CommandLineSettings.HacksPDBsPath);
+
+                if (Program.CommandLineSettings.Verbose)
+                {
+                    sw.Stop();
+                    Console.WriteLine($"Loaded hacks PDBs in {sw.Elapsed:mm\\:ss\\.fff}.");
+                }
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
+
             client.OpenDumpFileWide(filePath, 0);
             ctrl.WaitForEvent(DEBUG_WAIT.DEFAULT, uint.MaxValue);
             symbs.SetScopeFromStoredEvent();
+
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Opened dump file in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             var frames = new DEBUG_STACK_FRAME_EX[100];
             var getStackTraceCode = ctrl.GetStackTraceEx(0UL, 0UL, 0UL, out frames);
             if (getStackTraceCode != 0)
                 throw new Exception($"Failed to get stack trace. Exit code: {getStackTraceCode:X}");
 
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Got stack trace in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
             uint simpsonsIndex = uint.MaxValue;
             ulong simpsonsBase = 0;
-            uint hacksIndex = uint.MaxValue;
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             var getNumberModulesCode = symbs.GetNumberModules(out var loadedModules, out var unloadedModules);
             if (getNumberModulesCode != 0)
@@ -61,20 +104,21 @@ internal static class Analyser
                     var getModuleCode = symbs.GetModuleByModuleNameWide(moduleName, 0, out simpsonsIndex, out simpsonsBase);
                     if (getModuleCode != 0)
                         throw new Exception($"Failed to get simpsons module. Exit code: {getModuleCode:X}");
-                }
-                else if (moduleName == "Hacks")
-                {
-                    var getModuleCode = symbs.GetModuleByModuleNameWide(moduleName, 0, out hacksIndex, out _);
-                    if (getModuleCode != 0)
-                        throw new Exception($"Failed to get hacks module. Exit code: {getModuleCode:X}");
-                }
-
-                if (simpsonsIndex != uint.MaxValue && hacksIndex != uint.MaxValue)
                     break;
+                }
             }
 
             if (simpsonsIndex == uint.MaxValue)
                 throw new Exception("Simpsons module not found in dump.");
+
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Got module base in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             var getParametersCode = symbs.GetModuleParameters(1, [simpsonsBase], 0, out var parms);
             if (getParametersCode != 0)
@@ -82,13 +126,10 @@ internal static class Analyser
             var moduleSize = parms[0].Size;
             var checksum = parms[0].Checksum;
 
-            if (hacksIndex != uint.MaxValue && Directory.Exists(Program.CommandLineSettings.HacksPDBsPath))
+            if (Program.CommandLineSettings.Verbose)
             {
-                LoadModuleDir(ref symbs, Program.CommandLineSettings.HacksPDBsPath);
-
-                var reloadCode = symbs.ReloadWide("/f");
-                if (reloadCode != 0)
-                    throw new Exception($"Failed to reload symbols for Hacks PDB. Exit code: {reloadCode:X}");
+                sw.Stop();
+                Console.WriteLine($"Got module parameters in {sw.Elapsed:mm\\:ss\\.fff}.");
             }
 
             var sb = new StringBuilder("=== ANALYSER ERRORS ===\r\n");
@@ -113,6 +154,9 @@ internal static class Analyser
                 }
                 else
                 {
+                    if (Program.CommandLineSettings.Verbose)
+                        sw.Restart();
+
                     var lines = File.ReadAllLines(Program.CommandLineSettings.CSVPath);
                     var funcs = new List<FunctionEntry>(lines.Length - 1);
 
@@ -136,6 +180,16 @@ internal static class Analyser
                     }
 
                     funcsSorted = [.. funcs.OrderBy(x => x.Address)];
+
+                    if (Program.CommandLineSettings.Verbose)
+                    {
+                        sw.Stop();
+                        Console.WriteLine($"Read symbols file in {sw.Elapsed:mm\\:ss\\.fff}.");
+                    }
+
+                    if (Program.CommandLineSettings.Verbose)
+                        sw.Restart();
+
                     var funcsAdded = new HashSet<ulong>();
 
                     foreach (var frame in frames)
@@ -163,6 +217,12 @@ internal static class Analyser
                             }
                         }
                     }
+
+                    if (Program.CommandLineSettings.Verbose)
+                    {
+                        sw.Stop();
+                        Console.WriteLine($"Loaded symbols in {sw.Elapsed:mm\\:ss\\.fff}.");
+                    }
                 }
             }
 
@@ -172,6 +232,9 @@ internal static class Analyser
                 sb.AppendLine();
 
             client.SetOutputCallbacksWide(new DebugOutputCallback(ref sb));
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             sb.AppendLine("=== EXCEPTION RECORD ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, ".exr -1", DEBUG_EXECUTE.DEFAULT);
@@ -342,6 +405,12 @@ internal static class Analyser
                 else
                     sb.AppendLine($"Microsoft {platformString} {win32Major}.{win32Minor}.{kdMinor} ({buildType})");
                 sb.AppendLine();
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped output in {sw.Elapsed:mm\\:ss\\.fff}.");
             }
 
             client.SetOutputCallbacksWide(null);

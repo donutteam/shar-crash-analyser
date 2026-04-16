@@ -7,6 +7,8 @@ internal class CommandLineSettings
 {
     public bool Help { get; private set; } = false;
     public bool IsCLI { get; private set; } = false;
+    public bool Verbose { get; private set; } = false;
+    public bool NoColour { get; private set; } = false;
     public bool Pause { get; private set; } = false;
     public string DumpPath { get; private set; } = null;
     public string CSVPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shar_symbols.csv");
@@ -26,6 +28,15 @@ internal class CommandLineSettings
                 case "-?":
                 case "--help":
                     Help = true;
+                    break;
+                case "-v":
+                case "--verbose":
+                    Verbose = true;
+                    break;
+                case "-nc":
+                case "--nocolour":
+                case "--nocolor":
+                    NoColour = true;
                     break;
                 case "-ng":
                 case "--nogui":

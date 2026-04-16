@@ -22,6 +22,10 @@ Powered by [WinDbg](https://docs.microsoft.com/en-us/windows-hardware/drivers/de
 # Command Line Arguments
 * `-?`|`--help`
   * Show help message and exit
+* `-v`|`--verbose`
+  * Enable verbose output
+* `-nc`|`--nocolour`
+  * Disable coloured output
 * `-ng`|`--nogui`
   * Run in CLI mode without GUI
 * `-p`|`--pause`
