@@ -198,13 +198,13 @@ internal static class Analyser
                             continue;
 
                         var func = FindFunction(funcsSorted, frame.InstructionOffset);
-                        if (func == null)
+                        if (!func.HasValue)
                             continue;
 
-                        if (!funcsAdded.Add(func.Address))
+                        if (!funcsAdded.Add(func.Value.Address))
                             continue;
 
-                        var addSyntheticSymbolCode = symbs.AddSyntheticSymbolWide(func.Address, func.Size, func.Name, DEBUG_ADDSYNTHSYM.DEFAULT, out _);
+                        var addSyntheticSymbolCode = symbs.AddSyntheticSymbolWide(func.Value.Address, func.Value.Size, func.Value.Name, DEBUG_ADDSYNTHSYM.DEFAULT, out _);
                         if (addSyntheticSymbolCode != 0)
                         {
                             switch ((uint)addSyntheticSymbolCode)
@@ -212,7 +212,7 @@ internal static class Analyser
                                 case 0x800700B7: // already exists
                                     continue;
                                 default:
-                                    sb.AppendLine($"Failed to add synthetic symbol {func.Name} (0x{func.Address:X}). Exit code: {addSyntheticSymbolCode:X}");
+                                    sb.AppendLine($"Failed to add synthetic symbol {func}. Exit code: {addSyntheticSymbolCode:X}");
                                     break;
                             }
                         }
@@ -364,10 +364,10 @@ internal static class Analyser
                     if (addr >= simpsonsBase && addr < simpsonsBase + moduleSize)
                     {
                         var func = FindFunction(funcsSorted, addr);
-                        if (func != null)
+                        if (func.HasValue)
                         {
-                            ulong offset = addr - func.Address;
-                            symbol = $"Simpsons!{func.Name}+0x{offset:X}";
+                            ulong offset = addr - func.Value.Address;
+                            symbol = $"Simpsons!{func.Value.Name}+0x{offset:X}";
                         }
                         else
                         {
@@ -514,27 +514,22 @@ internal static class Analyser
             LoadModuleDir(ref symbs, directory);
     }
 
-    private static FunctionEntry FindFunction(List<FunctionEntry> funcs, ulong addr)
+    private static FunctionEntry? FindFunction(List<FunctionEntry> funcs, ulong addr)
     {
-        int left = 0, right = funcs.Count - 1;
+        var left = 0;
+        var right = funcs.Count - 1;
 
         while (left <= right)
         {
-            int mid = (left + right) / 2;
+            var mid = (left + right) / 2;
             var f = funcs[mid];
 
             if (addr < f.Address)
-            {
                 right = mid - 1;
-            }
             else if (addr >= f.Address + f.Size)
-            {
                 left = mid + 1;
-            }
             else
-            {
                 return f;
-            }
         }
 
         return null;
@@ -545,16 +540,14 @@ internal static class Analyser
         result = null;
 
         const int maxLength = 256;
-        var buffer = new byte[maxLength];
-
-        if (dataSpaces.ReadVirtual(address, maxLength, out buffer) != 0)
+        if (dataSpaces.ReadVirtual(address, maxLength, out var buffer) != 0)
             return false;
 
-        int length = 0;
+        var length = 0;
 
         for (; length < maxLength; length++)
         {
-            byte b = buffer[length];
+            var b = buffer[length];
 
             if (b == 0)
                 break;
@@ -575,7 +568,7 @@ internal static class Analyser
         var results = new List<string>();
         var sb = new StringBuilder();
 
-        var pageSize = 4096UL;
+        const ulong pageSize = 4096UL;
         var currentOffset = 0UL;
 
         while (currentOffset < size)
@@ -584,7 +577,7 @@ internal static class Analyser
 
             if (dataSpaces.QueryVirtual(currentAddr, out var mbi) == 0)
             {
-                bool isReadable = mbi.State == MEM.COMMIT && !mbi.Protect.HasFlag(PAGE.NOACCESS) && !mbi.Protect.HasFlag(PAGE.GUARD);
+                var isReadable = mbi.State == MEM.COMMIT && !mbi.Protect.HasFlag(PAGE.NOACCESS) && !mbi.Protect.HasFlag(PAGE.GUARD);
 
                 if (!isReadable)
                 {
@@ -669,21 +662,18 @@ internal static class Analyser
         results.Add(s);
     }
 
-    private class FunctionEntry(ulong address, uint size, string name)
+    private readonly struct FunctionEntry(ulong address, uint size, string name)
     {
-        public ulong Address { get; set; } = address;
-        public uint Size { get; set; } = size;
-        public string Name { get; set; } = name;
+        public ulong Address { get; } = address;
+        public uint Size { get; } = size;
+        public string Name { get; } = name;
+
+        public override string ToString() => $"{Name} (0x{Address:X})";
     }
 
-    private class DebugOutputCallback : IDebugOutputCallbacksImp
+    private class DebugOutputCallback(ref StringBuilder sb) : IDebugOutputCallbacksImp
     {
-        private readonly StringBuilder _sb;
-
-        public DebugOutputCallback(ref StringBuilder sb)
-        {
-            _sb = sb;
-        }
+        private readonly StringBuilder _sb = sb;
 
         public int Output(DEBUG_OUTPUT Mask, string Text)
         {
