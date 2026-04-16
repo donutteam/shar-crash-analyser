@@ -14,6 +14,7 @@ internal class CommandLineSettings
     public string CSVPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shar_symbols.csv");
     public string HacksPDBsPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HacksPDBs");
     public bool NoModules { get; private set; } = false;
+    public bool VerboseModules { get; private set; } = false;
     public bool DumpStrings { get; private set; } = false;
     public string StringsFilter { get; private set; } = null;
     public bool UpdateSymbols { get; private set; } = false;
@@ -64,6 +65,10 @@ internal class CommandLineSettings
                 case "-nm":
                 case "--nomodules":
                     NoModules = true;
+                    break;
+                case "-vm":
+                case "--verbosemodules":
+                    VerboseModules = true;
                     break;
                 case "-ds":
                 case "--dumpstrings":

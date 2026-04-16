@@ -38,6 +38,8 @@ Powered by [WinDbg](https://docs.microsoft.com/en-us/windows-hardware/drivers/de
   * Specify Hacks PDB path
 * `-nm`|`--nomodules`
   * Exclude modules from analysis
+* `-vm`|`--verbosemodules`
+  * Dumps verbose module info
 * `-sd`|`--stackdepth <depth>`
   * The depth of the raw stack output
     * *Must be divisble by 4*

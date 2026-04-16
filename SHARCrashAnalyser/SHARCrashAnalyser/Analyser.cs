@@ -450,7 +450,7 @@ internal static class Analyser
                     sw.Restart();
 
                 sb.AppendLine("=== MODULES ===");
-                ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "lmv", DEBUG_EXECUTE.DEFAULT);
+                ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, Program.CommandLineSettings.VerboseModules ? "lmv" : "lm", DEBUG_EXECUTE.DEFAULT);
                 sb.AppendLine();
 
                 if (Program.CommandLineSettings.Verbose)

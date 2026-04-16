@@ -52,6 +52,7 @@ internal static class Program
             Console.WriteLine("  -c, --csv <path>                   Specify symbols CSV path");
             Console.WriteLine("  -h, --hacks <path>                 Specify Hacks PDB path");
             Console.WriteLine("  -nm, --nomodules                   Exclude modules from analysis");
+            Console.WriteLine("  -vm, --verbosemodules              Dumps verbose module info");
             Console.WriteLine("  -sd, --stackdepth <depth>          The depth of the raw stack output");
             Console.WriteLine("  -ds, --dumpstrings                 Dump strings in analysis");
             Console.WriteLine("  -sf, --stringsfilter <filter>      Filter dumped strings");
