@@ -241,17 +241,53 @@ internal static class Analyser
             sb.AppendLine();
             ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".excr", DEBUG_EXECUTE.DEFAULT);
 
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped exception record in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
+
             sb.AppendLine("=== FAULTING INSTRUCTION ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "u @eip-5 L10", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
+
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped faulting instruction in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             sb.AppendLine("=== STACK TRACE ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "kn", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
 
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped stack trace in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
+
             sb.AppendLine("=== REGISTERS ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "r", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
+
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped registers in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             var registerStringsHeaderAdded = false;
             if (registers.GetNumberRegisters(out var reguistersCount) == 0)
@@ -304,6 +340,15 @@ internal static class Analyser
             if (registerStringsHeaderAdded)
                 sb.AppendLine();
 
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped register pointers (strings) in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
+
             sb.AppendLine("=== STACK (RAW) ===");
             //ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "dps esp", DEBUG_EXECUTE.DEFAULT);
             if (registers.GetIndexByNameWide("esp", out var espIndex) == 0 && registers.GetValue(espIndex, out var espValue) == 0 && dataSpaces.ReadVirtual(espValue.I64, Program.CommandLineSettings.StackDepth, out var espBuffer) == 0)
@@ -335,8 +380,17 @@ internal static class Analyser
             }
             sb.AppendLine();
 
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped stack (raw) in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
             if (Program.CommandLineSettings.DumpStrings)
             {
+                if (Program.CommandLineSettings.Verbose)
+                    sw.Restart();
+
                 sb.AppendLine("=== STRINGS ===");
                 if (!string.IsNullOrEmpty(Program.CommandLineSettings.StringsFilter))
                     sb.AppendLine($"Filter: {Program.CommandLineSettings.StringsFilter}");
@@ -346,7 +400,16 @@ internal static class Analyser
                     sb.AppendLine(s);
 
                 sb.AppendLine();
+
+                if (Program.CommandLineSettings.Verbose)
+                {
+                    sw.Stop();
+                    Console.WriteLine($"Dumped strings in {sw.Elapsed:mm\\:ss\\.fff}.");
+                }
             }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             if (ctrl.GetLastEventInformationWide(out var eventType, out var processId, out var threadId, out var extraInformation, out var description) == 0)
             {
@@ -375,12 +438,30 @@ internal static class Analyser
                 }
             }
 
+            if (Program.CommandLineSettings.Verbose)
+            {
+                sw.Stop();
+                Console.WriteLine($"Dumped fault address in {sw.Elapsed:mm\\:ss\\.fff}.");
+            }
+
             if (!Program.CommandLineSettings.NoModules)
             {
+                if (Program.CommandLineSettings.Verbose)
+                    sw.Restart();
+
                 sb.AppendLine("=== MODULES ===");
                 ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "lmv", DEBUG_EXECUTE.DEFAULT);
                 sb.AppendLine();
+
+                if (Program.CommandLineSettings.Verbose)
+                {
+                    sw.Stop();
+                    Console.WriteLine($"Dumped modules in {sw.Elapsed:mm\\:ss\\.fff}.");
+                }
             }
+
+            if (Program.CommandLineSettings.Verbose)
+                sw.Restart();
 
             if (ctrl.GetSystemVersionValues(out var platformId, out var win32Major, out var win32Minor, out var kdMajor, out var kdMinor) == 0)
             {
@@ -409,7 +490,7 @@ internal static class Analyser
             if (Program.CommandLineSettings.Verbose)
             {
                 sw.Stop();
-                Console.WriteLine($"Dumped output in {sw.Elapsed:mm\\:ss\\.fff}.");
+                Console.WriteLine($"Dumped OS version in {sw.Elapsed:mm\\:ss\\.fff}.");
             }
 
             client.SetOutputCallbacksWide(null);
