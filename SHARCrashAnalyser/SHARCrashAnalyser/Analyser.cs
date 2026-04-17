@@ -305,7 +305,7 @@ internal static class Analyser
                     {
                         if (dataSpaces.ReadVirtual(regValue, Program.CommandLineSettings.StackDepth, out var stackBuffer) == 0)
                         {
-                            for (int j = 0; j < Program.CommandLineSettings.StackDepth; j += 4)
+                            for (int j = 0; j < stackBuffer.Length; j += 4)
                             {
                                 uint stackValue = BitConverter.ToUInt32(stackBuffer, j);
 
