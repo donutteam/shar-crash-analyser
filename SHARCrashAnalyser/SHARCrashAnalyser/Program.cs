@@ -35,7 +35,14 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        Console.Title = Title;
+        if (!Console.IsOutputRedirected)
+        {
+            try
+            {
+                Console.Title = Title;
+            }
+            catch { }
+        }
         CommandLineSettings = new(args);
 
         if (CommandLineSettings.Help)
