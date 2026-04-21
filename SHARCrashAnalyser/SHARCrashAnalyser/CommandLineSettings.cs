@@ -18,6 +18,7 @@ internal class CommandLineSettings
     public bool DumpStrings { get; private set; } = false;
     public string StringsFilter { get; private set; } = null;
     public bool UpdateSymbols { get; private set; } = false;
+    public bool ForceUpdateSymbols { get; private set; } = false;
     public uint StackDepth { get; private set; } = 128u;
 
     public CommandLineSettings(string[] args)
@@ -82,6 +83,10 @@ internal class CommandLineSettings
                 case "-us":
                 case "--updatesymbols":
                     UpdateSymbols = true;
+                    break;
+                case "-f":
+                case "--force":
+                    ForceUpdateSymbols = true;
                     break;
                 case "-sd":
                 case "--stackdepth":

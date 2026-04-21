@@ -63,7 +63,8 @@ internal static class Program
             Console.WriteLine("  -sd, --stackdepth <depth>          The depth of the raw stack output");
             Console.WriteLine("  -ds, --dumpstrings                 Dump strings in analysis");
             Console.WriteLine("  -sf, --stringsfilter <filter>      Filter dumped strings");
-            Console.WriteLine("  -us, --updatesymbols               Force update symbols with latest");
+            Console.WriteLine("  -us, --updatesymbols               Update symbols with latest");
+            Console.WriteLine("  -f, --force                        Force overwrite existing symbols");
 
             if (CommandLineSettings.Pause)
             {
@@ -165,7 +166,7 @@ internal static class Program
 
     private static async Task UpdateSymbols()
     {
-        if (File.Exists(CommandLineSettings.CSVPath) && !AskYesNo($"Symbols file \"{CommandLineSettings.CSVPath}\" already exists. Do you want to overwrite?", false))
+        if (!CommandLineSettings.ForceUpdateSymbols && File.Exists(CommandLineSettings.CSVPath) && !AskYesNo($"Symbols file \"{CommandLineSettings.CSVPath}\" already exists. Do you want to overwrite?", false))
         {
             Console.WriteLine("Not overwriting symbols.");
             return;
