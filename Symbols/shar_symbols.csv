@@ -4876,7 +4876,7 @@
 "004b1e80","1562","FUN_004b1e80"
 "004b24a0","8","FUN_004b24a0"
 "004b24b0","52","IntersectLoader::IntersectLoader"
-"004b24f0","964","FUN_004b24f0"
+"004b24f0","964","IntersectLoader::LoadObject"
 "004b28c0","186","LensFlareLoader::LensFlareLoader"
 "004b2980","27","FUN_004b2980"
 "004b29a0","110","FUN_004b29a0"
