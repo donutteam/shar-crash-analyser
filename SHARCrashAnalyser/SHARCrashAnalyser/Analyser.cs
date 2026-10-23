@@ -86,6 +86,7 @@ internal static class Analyser
 
             uint simpsonsIndex = uint.MaxValue;
             ulong simpsonsBase = 0;
+            string simpsonsModuleName = null;
 
             if (Program.CommandLineSettings.Verbose)
                 sw.Restart();
@@ -101,6 +102,7 @@ internal static class Analyser
 
                 if (moduleName.StartsWith("simpsons", StringComparison.InvariantCultureIgnoreCase))
                 {
+                    simpsonsModuleName = moduleName;
                     var getModuleCode = symbs.GetModuleByModuleNameWide(moduleName, 0, out simpsonsIndex, out simpsonsBase);
                     if (getModuleCode != 0)
                         throw new Exception($"Failed to get simpsons module. Exit code: {getModuleCode:X}");
@@ -137,7 +139,14 @@ internal static class Analyser
             List<FunctionEntry> funcsSorted = [];
             if (!KnownChecksums.TryGetValue(checksum, out var release))
                 release = "Unknown";
-            if (checksum != EXPECTED_CHECKSUM)
+            if (!string.IsNullOrWhiteSpace(Program.CommandLineSettings.SimpsonsPDBPath) && Directory.Exists(Program.CommandLineSettings.SimpsonsPDBPath))
+            {
+                var appendPathCode = symbs.AppendSymbolPathWide(Program.CommandLineSettings.SimpsonsPDBPath);
+                if (appendPathCode != 0)
+                    throw new Exception($"Failed to append symbol path \"{Program.CommandLineSettings.SimpsonsPDBPath}\". Exit code: {appendPathCode:X}");
+                ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, $".reload /i /f {simpsonsModuleName}", DEBUG_EXECUTE.NOT_LOGGED);
+            }
+            else if (checksum != EXPECTED_CHECKSUM)
             {
                 sb.AppendLine("Unsupported game version detected.");
                 sb.AppendLine($"Expected checksum: {EXPECTED_CHECKSUM:X8} (English). Found checksum: {checksum:X8} ({release}).");
