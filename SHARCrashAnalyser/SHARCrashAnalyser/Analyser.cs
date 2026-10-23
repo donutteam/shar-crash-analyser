@@ -239,7 +239,7 @@ internal static class Analyser
             sb.AppendLine("=== EXCEPTION RECORD ===");
             ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, ".exr -1", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
-            ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".excr", DEBUG_EXECUTE.DEFAULT);
+            ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, ".ecxr", DEBUG_EXECUTE.DEFAULT);
 
             if (Program.CommandLineSettings.Verbose)
             {
@@ -251,7 +251,8 @@ internal static class Analyser
                 sw.Restart();
 
             sb.AppendLine("=== FAULTING INSTRUCTION ===");
-            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "u @eip-5 L10", DEBUG_EXECUTE.DEFAULT);
+            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "ub @eip L5", DEBUG_EXECUTE.DEFAULT);
+            ctrl.ExecuteWide(DEBUG_OUTCTL.AMBIENT_TEXT, "u @eip L5", DEBUG_EXECUTE.DEFAULT);
             sb.AppendLine();
 
             if (Program.CommandLineSettings.Verbose)
