@@ -136,6 +136,14 @@ internal static class Analyser
 
             var sb = new StringBuilder("=== ANALYSER ERRORS ===\r\n");
 
+            if (!string.IsNullOrWhiteSpace(Program.CommandLineSettings.Pddidx8rPDBPath) && Directory.Exists(Program.CommandLineSettings.Pddidx8rPDBPath))
+            {
+                var appendPathCode = symbs.AppendSymbolPathWide(Program.CommandLineSettings.Pddidx8rPDBPath);
+                if (appendPathCode != 0)
+                    throw new Exception($"Failed to append symbol path \"{Program.CommandLineSettings.SimpsonsPDBPath}\". Exit code: {appendPathCode:X}");
+                ctrl.ExecuteWide(DEBUG_OUTCTL.IGNORE, $".reload /i /f pddidx8r", DEBUG_EXECUTE.NOT_LOGGED);
+            }
+
             List<FunctionEntry> funcsSorted = [];
             if (!KnownChecksums.TryGetValue(checksum, out var release))
                 release = "Unknown";
@@ -373,15 +381,29 @@ internal static class Analyser
 
                     if (addr >= simpsonsBase && addr < simpsonsBase + moduleSize)
                     {
-                        var func = FindFunction(funcsSorted, addr);
-                        if (func.HasValue)
+                        if (!string.IsNullOrWhiteSpace(Program.CommandLineSettings.SimpsonsPDBPath) && Directory.Exists(Program.CommandLineSettings.SimpsonsPDBPath))
                         {
-                            ulong offset = addr - func.Value.Address;
-                            symbol = $"Simpsons!{func.Value.Name}+0x{offset:X}";
+                            if (symbs.GetNameByOffsetWide(addr, out string symbolName, out ulong displacement) == 0)
+                            {
+                                symbol = $"{symbolName}+0x{displacement:X}";
+                            }
+                            else
+                            {
+                                symbol = $"Simpsons+0x{addr - simpsonsBase:X}";
+                            }
                         }
                         else
                         {
-                            symbol = $"Simpsons+0x{addr - simpsonsBase:X}";
+                            var func = FindFunction(funcsSorted, addr);
+                            if (func.HasValue)
+                            {
+                                ulong offset = addr - func.Value.Address;
+                                symbol = $"Simpsons!{func.Value.Name}+0x{offset:X}";
+                            }
+                            else
+                            {
+                                symbol = $"Simpsons+0x{addr - simpsonsBase:X}";
+                            }
                         }
                     }
 
